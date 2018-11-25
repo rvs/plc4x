@@ -35,6 +35,8 @@ import org.apache.plc4x.java.utils.connectionpool.PooledPlcDriverManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.management.*;
+import java.lang.management.ManagementFactory;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -43,9 +45,10 @@ import java.util.concurrent.*;
 /**
  * Main class that orchestrates scraping.
  */
-public class Scraper {
+public class Scraper implements ScraperMBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Scraper.class);
+    public static final String MX_DOMAIN = "org.apache.plc4x.java";
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10,
         new BasicThreadFactory.Builder()
@@ -66,6 +69,7 @@ public class Scraper {
     private final MultiValuedMap<ScraperTask, ScheduledFuture<?>> futures = new ArrayListValuedHashMap<>();
     private final PlcDriverManager driverManager;
     private final List<ScrapeJob> jobs;
+    private MBeanServer mBeanServer;
 
     /**
      * Creates a Scraper instance from a configuration.
@@ -103,6 +107,13 @@ public class Scraper {
         Validate.notEmpty(jobs);
         this.driverManager = driverManager;
         this.jobs = jobs;
+        // Register MBean
+        mBeanServer = ManagementFactory.getPlatformMBeanServer();
+        try {
+            mBeanServer.registerMBean(this, new ObjectName(MX_DOMAIN, "scraper", "scraper"));
+        } catch (InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException | MalformedObjectNameException e) {
+            LOGGER.debug("Unable to register Scraper as MBean", e);
+        }
     }
 
     /**
@@ -124,6 +135,8 @@ public class Scraper {
                         tuple.getLeft().getFields(),
                         1_000,
                         handlerPool, resultHandler);
+                    // Register task mxbean
+                    registerTaskMBean(task);
                     // Add task to internal list
                     tasks.put(tuple.getLeft(), task);
                     ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(task,
@@ -150,6 +163,18 @@ public class Scraper {
     }
 
     /**
+     * Register a task as MBean
+     * @param task task to register
+     */
+    private void registerTaskMBean(ScraperTask task) {
+        try {
+            mBeanServer.registerMBean(task, new ObjectName(MX_DOMAIN + ":type=ScrapeTask,name=" + task.getJobName() + "-" + task.getConnectionAlias()));
+        } catch (InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException | MalformedObjectNameException e) {
+            LOGGER.debug("Unable to register Task as MBean", e);
+        }
+    }
+
+    /**
      * For testing.
      */
     ScheduledExecutorService getScheduler() {
@@ -169,6 +194,14 @@ public class Scraper {
         }
         // Clear the map
         futures.clear();
+    }
+
+    // MBean methods
+
+    @Override
+    public boolean isRunning() {
+        // TODO is this okay so?
+        return !futures.isEmpty();
     }
 
 }
