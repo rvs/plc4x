@@ -23,7 +23,6 @@ import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPoolConfig;
@@ -42,6 +41,8 @@ import org.apache.plc4x.java.utils.connectionpool.PooledPlcDriverManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.management.*;
+import java.lang.management.ManagementFactory;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -60,9 +61,11 @@ import java.util.stream.Collectors;
  *     right now boolean variables as well as numeric variables could be used as data-types
  *     available comparators are ==,!= for all data-types and &gt;,&gt;=,&lt;,&lt;= for numeric data-types
  */
-public class TriggeredScraperImpl implements Scraper {
+public class TriggeredScraperImpl implements Scraper, TriggeredScraperMBean {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TriggeredScraperImpl.class);
+    public static final String MX_DOMAIN = "org.apache.plc4x.java";
+
     private static final int DEFAULT_FUTURE_TIME_OUT = 2000;
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10,
@@ -84,6 +87,7 @@ public class TriggeredScraperImpl implements Scraper {
     private final MultiValuedMap<ScraperTask, ScheduledFuture<?>> scraperTaskMap = new ArrayListValuedHashMap<>();
     private final PlcDriverManager driverManager;
     private final List<ScrapeJob> jobs;
+    private MBeanServer mBeanServer;
 
     private long futureTimeOut;
 
@@ -124,7 +128,15 @@ public class TriggeredScraperImpl implements Scraper {
         this.jobs = jobs;
         this.triggerCollector = triggerCollector;
         this.futureTimeOut = futureTimeOut;
+        // Register MBean
+        mBeanServer = ManagementFactory.getPlatformMBeanServer();
+        try {
+            mBeanServer.registerMBean(this, new ObjectName(MX_DOMAIN, "scraper", "scraper"));
+        } catch (InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException | MalformedObjectNameException e) {
+            LOGGER.debug("Unable to register Scraper as MBean", e);
+        }
     }
+
 
     /**
      * Min Idle per Key is set to 1 for situations where the network is broken.
@@ -176,6 +188,7 @@ public class TriggeredScraperImpl implements Scraper {
 
                     // Add task to internal list
                     LOGGER.info("Task {} added to scheduling", triggeredScraperTask);
+                    registerTaskMBean(triggeredScraperTask);
                     tasks.put(job, triggeredScraperTask);
                     ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(triggeredScraperTask, 0, job.getScrapeRate(), TimeUnit.MILLISECONDS);
 
@@ -203,9 +216,16 @@ public class TriggeredScraperImpl implements Scraper {
         }, 1_000, 1_000, TimeUnit.MILLISECONDS);
     }
 
-    @Override
-    public int getNumberOfActiveTasks() {
-        return 0;
+    /**
+     * Register a task as MBean
+     * @param task task to register
+     */
+    private void registerTaskMBean(ScraperTask task) {
+        try {
+            mBeanServer.registerMBean(task, new ObjectName(MX_DOMAIN + ":type=ScrapeTask,name=" + task.getJobName() + "-" + task.getConnectionAlias()));
+        } catch (InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException | MalformedObjectNameException e) {
+            LOGGER.debug("Unable to register Task as MBean", e);
+        }
     }
 
     @Override
@@ -295,5 +315,18 @@ public class TriggeredScraperImpl implements Scraper {
                 name -> name,
                 plcReadResponse::getObject
             ));
+    }
+
+
+    // MBean methods
+    @Override
+    public boolean isRunning() {
+        // TODO is this okay so?
+        return !scraperTaskMap.isEmpty();
+    }
+
+    @Override
+    public int getNumberOfActiveTasks() {
+        return (int) scraperTaskMap.entries().stream().filter(entry -> !entry.getValue().isDone()).count();
     }
 }

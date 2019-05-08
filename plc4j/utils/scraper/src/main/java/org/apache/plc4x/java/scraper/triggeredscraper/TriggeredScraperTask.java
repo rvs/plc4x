@@ -48,9 +48,7 @@ import java.util.stream.Collectors;
  * performs the triggered task from a job for one device based on the TriggerHandler as defined in Configuration
  * ToDo Implement the monitoring as well: PLC4X-90
  */
-public class TriggeredScraperTask implements ScraperTask {
-
-
+public class TriggeredScraperTask implements ScraperTask, TriggeredScraperTaskMBean {
     private static final Logger LOGGER = LoggerFactory.getLogger(TriggeredScraperTask.class);
 
     private final PlcDriverManager driverManager;
@@ -93,6 +91,7 @@ public class TriggeredScraperTask implements ScraperTask {
     @Override
     //ToDo code-refactoring and improved testing --> PLC4X-90
     public void run() {
+        LOGGER.trace("Check condition for task of job {} for connection {}", jobName, connectionAlias);
         if(this.triggerHandler.checkTrigger()) {
             // Does a single fetch only when trigger is valid
             LOGGER.info("Trigger for job {} and device {} is met ... scraping desired data",jobName,connectionAlias);
@@ -174,42 +173,37 @@ public class TriggeredScraperTask implements ScraperTask {
 
     @Override
     public String getJobName() {
-        return null;
+        return this.jobName;
     }
 
     @Override
     public String getConnectionAlias() {
-        return null;
+        return this.connectionAlias;
     }
 
     @Override
     public long getRequestCounter() {
-        return 0;
+        return this.requestCounter.get();
     }
 
     @Override
     public long getSuccessfullRequestCounter() {
-        return 0;
+        return this.successCounter.get();
     }
 
     @Override
     public DescriptiveStatistics getLatencyStatistics() {
-        return null;
-    }
-
-    @Override
-    public double getPercentageFailed() {
-        return 0;
+        return this.latencyStatistics;
     }
 
     @Override
     public void handleException(Exception e) {
-
+        // TODO Implement this
     }
 
     @Override
     public void handleErrorResponse(Map<String, PlcResponseCode> failed) {
-
+        // TODO Implement this
     }
 
     public PlcDriverManager getDriverManager() {
@@ -240,5 +234,32 @@ public class TriggeredScraperTask implements ScraperTask {
             ", resultHandler=" + resultHandler +
             ", triggerHandler=" + triggerHandler +
             '}';
+    }
+
+    //---------------------------------
+    // JMX Monitoring
+    //---------------------------------
+    @Override
+    public long getScrapesTotal() {
+        return requestCounter.get();
+    }
+
+    @Override
+    public long getScrapesSuccess() {
+        return successCounter.get();
+    }
+
+    @Override
+    public double getPercentageFailed() {
+        return 100.0 - (double)this.getScrapesSuccess()/this.getScrapesTotal() * 100.0;
+    }
+
+    @Override
+    public String[] getPercentiles() {
+        String[] percentiles = new String[10];
+        for (int i = 1; i <= 10; i += 1) {
+            percentiles[i - 1] = String.format("%d%%: %s ms", 10 * i, latencyStatistics.getPercentile(10.0 * i) * 1e-6);
+        }
+        return percentiles;
     }
 }
