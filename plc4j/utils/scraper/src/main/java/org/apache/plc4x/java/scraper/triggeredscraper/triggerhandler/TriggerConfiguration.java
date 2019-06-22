@@ -325,7 +325,9 @@ public class TriggerConfiguration{
                 return false;
             }
             if(triggerResultList.size()>1) {
-                logger.trace("{}",triggerResultList);
+                if(logger.isTraceEnabled()) {
+                    logger.trace("{}", triggerResultList);
+                }
                 boolean combinedResult=triggerResultList.get(0);
                 for (int countElements = 1; countElements < acquiredValuesList.size(); countElements++) {
                     switch (triggerElementList.get(countElements).getConcatType()){
@@ -368,8 +370,9 @@ public class TriggerConfiguration{
         if(matcher.matches()){
             String triggerStrategy = matcher.group("strategy");
             String scheduledMs = matcher.group("scheduledInterval");
-
-            logger.debug("Strategy: {}, scheduled ms: {}",triggerStrategy,scheduledMs);
+            if(logger.isDebugEnabled()) {
+                logger.debug("Strategy: {}, scheduled ms: {}", triggerStrategy, scheduledMs);
+            }
 
             String triggerVar = matcher.group("triggerVar");
             String comparatorString = matcher.group("comp");
@@ -434,7 +437,9 @@ public class TriggerConfiguration{
 
     private void handleException(Exception e){
         //push up if needed
-        logger.debug("Exception: ", e);
+        if(logger.isDebugEnabled()) {
+            logger.debug("Exception: ", e);
+        }
     }
 
     TriggerType getTriggerType() {
@@ -696,7 +701,9 @@ public class TriggerConfiguration{
 
         void overrideCompareValue(){
             if(this.previousMode && this.reservedCompareValue!=null){
-                logger.info("Compare value overridden, before: {}, now: {}; for Trigger {}",this.compareValue,this.reservedCompareValue,this.triggerJob);
+                if(logger.isDebugEnabled()) {
+                    logger.debug("Compare value overridden, before: {}, now: {}; for Trigger {}", this.compareValue, this.reservedCompareValue, this.triggerJob);
+                }
                 this.compareValue = this.reservedCompareValue;
             }
         }

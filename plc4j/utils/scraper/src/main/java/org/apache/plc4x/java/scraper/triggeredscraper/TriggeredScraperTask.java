@@ -91,10 +91,14 @@ public class TriggeredScraperTask implements ScraperTask, TriggeredScraperTaskMB
     @Override
     //ToDo code-refactoring and improved testing --> PLC4X-90
     public void run() {
-        LOGGER.trace("Check condition for task of job {} for connection {}", jobName, connectionAlias);
+        if(LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Check condition for task of job {} for connection {}", jobName, connectionAlias);
+        }
         if(this.triggerHandler.checkTrigger()) {
             // Does a single fetch only when trigger is valid
-            LOGGER.info("Trigger for job {} and device {} is met ... scraping desired data",jobName,connectionAlias);
+            if(LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Trigger for job {} and device {} is met ... scraping desired data", jobName, connectionAlias);
+            }
             if(LOGGER.isTraceEnabled()) {
                 LOGGER.trace("Start new scrape of task of job {} for connection {}", jobName, connectionAlias);
             }
@@ -138,7 +142,9 @@ public class TriggeredScraperTask implements ScraperTask, TriggeredScraperTaskMB
                 // Handle response (Async)
                 CompletableFuture.runAsync(() -> resultHandler.handle(jobName, connectionAlias, TriggeredScraperImpl.convertPlcResponseToMap(response)), executorService);
             } catch (Exception e) {
-                LOGGER.debug("Exception during scrape", e);
+                if(LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Exception during scrape", e);
+                }
                 handleException(e);
             } finally {
                 if (connection != null) {

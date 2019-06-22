@@ -165,11 +165,13 @@ public class TriggeredScraperImpl implements Scraper, TriggeredScraperMBean {
         for(ScrapeJob job:jobs){
             //iterate over all source the jobs shall performed on
             for(Map.Entry<String,String> sourceEntry:job.getSourceConnections().entrySet()){
-                LOGGER.debug("Register task for job {} for conn {} ({}) at rate {} ms",
-                    job.getJobName(),
-                    sourceEntry.getKey(),
-                    sourceEntry.getValue(),
-                    job.getScrapeRate());
+                if(LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Register task for job {} for conn {} ({}) at rate {} ms",
+                        job.getJobName(),
+                        sourceEntry.getKey(),
+                        sourceEntry.getValue(),
+                        job.getScrapeRate());
+                }
 
                 //create the regarding triggered scraper task
                 TriggeredScraperTask triggeredScraperTask;
@@ -187,7 +189,9 @@ public class TriggeredScraperImpl implements Scraper, TriggeredScraperMBean {
                         triggerCollector);
 
                     // Add task to internal list
-                    LOGGER.info("Task {} added to scheduling", triggeredScraperTask);
+                    if(LOGGER.isInfoEnabled()) {
+                        LOGGER.info("Task {} added to scheduling", triggeredScraperTask);
+                    }
                     registerTaskMBean(triggeredScraperTask);
                     tasks.put(job, triggeredScraperTask);
                     ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(triggeredScraperTask, 0, job.getScrapeRate(), TimeUnit.MILLISECONDS);
@@ -211,7 +215,9 @@ public class TriggeredScraperImpl implements Scraper, TriggeredScraperMBean {
                     entry.getValue().getPercentageFailed(),
                     statistics.apply(new PercentageAboveThreshold(entry.getKey().getScrapeRate() * 1e6)),
                     statistics.getMin() * 1e-6, statistics.getMean() * 1e-6, statistics.getPercentile(50) * 1e-6);
-                LOGGER.debug(msg);
+                if(LOGGER.isDebugEnabled()) {
+                    LOGGER.debug(msg);
+                }
             }
         }, 1_000, 1_000, TimeUnit.MILLISECONDS);
     }

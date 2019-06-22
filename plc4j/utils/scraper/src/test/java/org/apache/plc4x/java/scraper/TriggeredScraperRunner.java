@@ -41,7 +41,7 @@ public class TriggeredScraperRunner {
      * testing of TriggeredScraper vs real device
      */
     public static void main(String[] args) throws IOException, ScraperException {
-        TriggeredScraperConfiguration configuration = TriggeredScraperConfiguration.fromFile("plc4j/utils/scraper/src/test/resources/example_triggered_scraper2.yml");
+        TriggeredScraperConfiguration configuration = TriggeredScraperConfiguration.fromFile("plc4j/utils/scraper/src/test/resources/example_triggered_scraper.yml");
 
         PlcDriverManager plcDriverManager = new PooledPlcDriverManager();
         TriggerCollector triggerCollector = new TriggerCollectorImpl(plcDriverManager);

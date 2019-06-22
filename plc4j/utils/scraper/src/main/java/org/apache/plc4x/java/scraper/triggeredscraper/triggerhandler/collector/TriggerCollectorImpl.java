@@ -94,8 +94,8 @@ public class TriggerCollectorImpl implements TriggerCollector {
         RequestElement requestElement = new RequestElement(plcConnectionString,plcField,interval, uuid);
         if(!currentRequestElements.containsValue(requestElement)){
             currentRequestElements.put(uuid,requestElement);
-            if(logger.isInfoEnabled()) {
-                logger.info("Received request to: {} for PLC: {}", plcField, plcConnectionString);
+            if(logger.isDebugEnabled()) {
+                logger.debug("Received request to: {} for PLC: {}", plcField, plcConnectionString);
             }
             return uuid;
         }
