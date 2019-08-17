@@ -60,8 +60,7 @@ public class RawSocketChannelTest {
                     ch.pipeline().addLast(new ChannelInboundHandlerAdapter(){
                         @Override
                         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-                            System.out.println("Hello, I received some bytes!");
-                            // System.out.println(ByteBufUtil.prettyHexDump(((ByteBuf) msg)));
+                            System.out.println(ByteBufUtil.prettyHexDump(((ByteBuf) msg)));
                         }
                     });
                     ch.pipeline().addLast(new ChannelHandlerAdapter() {
@@ -84,8 +83,9 @@ public class RawSocketChannelTest {
 
             channel.writeAndFlush(Unpooled.wrappedBuffer("Hallo".getBytes()));
 
-
+            // Prepare something to read
             Thread.sleep(10_000);
+
         } finally {
             if (channel != null) {
                 channel.close().sync();

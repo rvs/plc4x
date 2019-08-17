@@ -26,9 +26,13 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.oio.OioByteStreamChannel;
 import org.apache.commons.lang3.NotImplementedException;
+import org.pcap4j.core.NotOpenException;
+import org.pcap4j.core.PacketListener;
 import org.pcap4j.core.PcapHandle;
+import org.pcap4j.core.PcapNativeException;
 import org.pcap4j.core.PcapNetworkInterface;
 import org.pcap4j.core.Pcaps;
+import org.pcap4j.packet.Packet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +41,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.SocketTimeoutException;
+import java.util.concurrent.TimeoutException;
 
 /**
  * TODO write comment
@@ -51,7 +57,8 @@ public class RawSocketChannel extends OioByteStreamChannel {
     private final RawSocketChannelConfig config;
     private PcapNetworkInterface nif;
     private PcapHandle handle;
-    private ByteBuf buffer;
+    public static ByteBuf buffer;
+    private Thread loopThread;
 
     public RawSocketChannel() {
         super(null);
@@ -74,6 +81,23 @@ public class RawSocketChannel extends OioByteStreamChannel {
         nif = Pcaps.getDevByName("en0");
         handle = nif.openLive(65535, PcapNetworkInterface.PromiscuousMode.PROMISCUOUS, 10);
         buffer = Unpooled.buffer();
+        // Start loop in another Thread
+        loopThread = new Thread(() -> {
+            try {
+                handle.loop(-1, (PacketListener) packet -> {
+                    // logger.debug("Captured Packet from PCAP with length {} bytes", packet.getRawData().length);
+                    buffer.writeBytes(packet.getRawData());
+                });
+            } catch (PcapNativeException | NotOpenException e) {
+                // TODO this should close everything automatically
+                logger.error("Pcap4j loop thread died!", e);
+                pipeline().fireExceptionCaught(e);
+            } catch (InterruptedException e) {
+                logger.warn("PCAP Loop Thread was interrupted (hopefully intentionally)", e);
+                Thread.currentThread().interrupt();
+            }
+        });
+        loopThread.start();
         activate(new PcapInputStream(buffer), new DiscardingOutputStream());
     }
 
@@ -94,8 +118,20 @@ public class RawSocketChannel extends OioByteStreamChannel {
 
     @Override
     protected void doDisconnect() throws Exception {
+        this.loopThread.interrupt();
         if (this.handle != null) {
             this.handle.close();
+        }
+    }
+
+    @Override protected int doReadBytes(ByteBuf buf) throws Exception {
+        if (handle == null || !handle.isOpen()) {
+            return -1;
+        }
+        try {
+            return super.doReadBytes(buf);
+        } catch (SocketTimeoutException ignored) {
+            return 0;
         }
     }
 
@@ -137,17 +173,16 @@ public class RawSocketChannel extends OioByteStreamChannel {
 
         @Override
         public int read() throws IOException {
-            logger.debug("Reading Byte...");
-            while (buf.readableBytes() < 1) {
-                // Do nothing
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+            // Timeout 10 ms
+            final long timeout = System.nanoTime() + 10_000;
+            while (System.nanoTime() < timeout) {
+                if (buf.readableBytes() > 0) {
+                    return buf.readByte();
                 }
             }
-            return buf.readByte();
+            throw new SocketTimeoutException();
         }
+
     }
 
     public class RawSocketUnsafe extends AbstractUnsafe {
