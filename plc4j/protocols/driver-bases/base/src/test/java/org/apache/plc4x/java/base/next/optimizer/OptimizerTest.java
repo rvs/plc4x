@@ -4,7 +4,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 
 import java.sql.SQLOutput;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -26,18 +28,33 @@ public class OptimizerTest {
     public void optimizerTest() {
         final List<MergeRule<TestRequest, FieldResponse>> rules = Arrays.asList(new TestMergeRule());
         final List<TestRequest> requests = Arrays.asList(
-            new TestRequest(10, 10),
-            new TestRequest(20, 5),
-            new TestRequest(15, 5)
+            new TestRequest(0, 1),
+            new TestRequest(1, 1),
+            new TestRequest(2, 1),
+            new TestRequest(3, 1),
+            new TestRequest(4, 1),
+            new TestRequest(5, 1),
+            new TestRequest(6, 1),
+            new TestRequest(7, 1)
+//            new TestRequest(16, 16),
+//            new TestRequest(32, 16)
         );
+        final int bytesTotal = calculateSize(requests);
         final Optimizer<TestRequest, FieldResponse> optimizer
             = new Optimizer<>(rules);
         final Set<OptimizerBatch<TestRequest, FieldResponse>> batches = optimizer.optimize(requests);
 
         System.out.println(batches.size() + " Results have been found:");
-        for (OptimizerBatch<TestRequest, FieldResponse> batch : batches) {
-            System.out.println(" - " + batch.getRequests());
+        final ArrayList<OptimizerBatch<TestRequest, FieldResponse>> printBatches = new ArrayList<>(batches);
+        printBatches.sort(Comparator.comparingInt(b -> calculateSize(b.getRequests())));
+        for (OptimizerBatch<TestRequest, FieldResponse> batch : printBatches) {
+            final int bytesOptimized = calculateSize(batch.getRequests());
+            System.out.println(String.format(" - %.2f - %d - %s", (double)bytesOptimized/bytesTotal, batch.getRequests().size(), batch.getRequests()));
         }
+    }
+
+    private static int calculateSize(List<TestRequest> requests) {
+        return requests.stream().map(req -> Math.max(req.length, 8)).mapToInt(value -> value).sum();
     }
 
 
