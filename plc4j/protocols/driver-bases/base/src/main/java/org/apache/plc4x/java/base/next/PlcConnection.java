@@ -16,5 +16,11 @@ public interface PlcConnection {
      * Is called from downstream to notify the Connection object, that there is a response
      * for one of its requests.
      */
-    void respond(Response response);
+    void handleResponse(Response response);
+
+    /**
+     * This is the handler for an exception which comes from the PIPELINE.
+     * Default behavior is to cancel all pending requests.
+     */
+    void fireException(Throwable cause);
 }

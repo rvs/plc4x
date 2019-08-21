@@ -6,6 +6,8 @@ import org.apache.plc4x.java.base.next.commands.FailedRequest;
 import org.apache.plc4x.java.base.next.commands.ReadRequest;
 import org.apache.plc4x.java.base.next.commands.Response;
 import org.apache.plc4x.java.base.next.netty.PlcApiCodec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,6 +19,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * This implementation should be (mostly) generic and drivers do NOT have to subclass it.
  */
 public class PlcConnectionImpl implements PlcConnection {
+
+    private static final Logger logger = LoggerFactory.getLogger(PlcConnectionImpl.class);
 
     private final PlcDriver driver;
     private final PlcApiCodec codec;
@@ -69,7 +73,7 @@ public class PlcConnectionImpl implements PlcConnection {
         throw new NotImplementedException("");
     }
 
-    @Override public void respond(Response response) {
+    @Override public void handleResponse(Response response) {
         // Take the necessary action
         assert requests.containsKey(response.getTransactionId());
         final RequestInformation information = requests.get(response.getTransactionId());
@@ -78,5 +82,14 @@ public class PlcConnectionImpl implements PlcConnection {
         } else {
             throw new IllegalStateException("This type of response " + response.getClass() + " is not implemented");
         }
+    }
+
+    @Override public void fireException(Throwable cause) {
+        logger.warn("Catched an exception, cancel all pending requests", cause);
+        // Find all active requests (future not DONE), and cancel them
+        requests.values().stream()
+            .map(RequestInformation::getFuture)
+            .filter(f -> !f.isDone())
+            .forEach(f -> f.completeExceptionally(cause));
     }
 }

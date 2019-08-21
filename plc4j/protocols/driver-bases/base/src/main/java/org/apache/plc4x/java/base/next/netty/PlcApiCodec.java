@@ -3,23 +3,25 @@ package org.apache.plc4x.java.base.next.netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.ByteToMessageCodec;
 import io.netty.util.ReferenceCountUtil;
 import org.apache.plc4x.java.base.next.PlcConnection;
 import org.apache.plc4x.java.base.next.PlcConnectionImpl;
 import org.apache.plc4x.java.base.next.PlcProtocol;
+import org.apache.plc4x.java.base.next.commands.Message;
 import org.apache.plc4x.java.base.next.commands.ReadRequest;
 import org.apache.plc4x.java.base.next.commands.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 /**
  * This class is the binding element between a {@link org.apache.plc4x.java.base.next.PlcProtocol},
  * netty and the High Level API classes like @{@link org.apache.plc4x.java.base.next.PlcConnection}.
  */
-public class PlcApiCodec extends ChannelDuplexHandler {
+public class PlcApiCodec extends ByteToMessageCodec<Message> {
 
     private static final Logger logger = LoggerFactory.getLogger(PlcApiCodec.class);
 
@@ -50,15 +52,7 @@ public class PlcApiCodec extends ChannelDuplexHandler {
         // ?
     }
 
-    @Override public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-        // ?
-    }
-
-    @Override public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-        // ?
-    }
-
-    @Override public void write(ChannelHandlerContext ctx, Object command, ChannelPromise promise) throws Exception {
+    @Override protected void encode(ChannelHandlerContext ctx, Message command, ByteBuf out) throws Exception {
         // Check exact message type and forward
         if (command instanceof ReadRequest) {
             logger.debug("Received read request {}", command);
@@ -70,22 +64,22 @@ public class PlcApiCodec extends ChannelDuplexHandler {
         }
     }
 
-    @Override public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        final ByteBuf buf = (ByteBuf) msg;
+    @Override protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
         logger.debug("Received message\n"
-            + ByteBufUtil.prettyHexDump(buf));
-        buf.markReaderIndex();
+            + ByteBufUtil.prettyHexDump(in));
+        in.markReaderIndex();
         try {
-            Response response = protocol.decode(buf);
-            this.plcConnection.respond(response);
+            Response response = protocol.decode(in);
+            this.plcConnection.handleResponse(response);
         } catch (PlcProtocol.UnableToParseException e) {
-            buf.resetReaderIndex();
+            in.resetReaderIndex();
         }
-        ReferenceCountUtil.release(msg);
+        ReferenceCountUtil.release(in);
     }
 
     @Override public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        // General Exception handling!
+        // General Exception handling, notify Connection
+        this.plcConnection.fireException(cause);
     }
 
     public void registerConnection(PlcConnectionImpl plcConnection) {

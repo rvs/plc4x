@@ -21,7 +21,6 @@ public interface PlcProtocol {
      */
     Response decode(ByteBuf buf) throws UnableToParseException;
 
-    class UnableToParseException extends Exception {
-
-    }
+    /** Used by {@link #decode(ByteBuf)} to notify that no bytes where consumed **/
+    class UnableToParseException extends Exception { }
 }
