@@ -1,16 +1,20 @@
 package org.apache.plc4x.java.base.next.commands;
 
+import org.apache.plc4x.java.base.next.request.FieldRead;
+
+import java.util.List;
+
 public class ReadRequest extends Message {
 
-    private final String query;
+    private final List<FieldRead> fieldReads;
 
-    public ReadRequest(int transactionId, String query) {
+    public ReadRequest(int transactionId, List<FieldRead> fieldReads) {
         super(transactionId);
-        this.query = query;
+        this.fieldReads = fieldReads;
     }
 
-    public String getQuery() {
-        return query;
+    public List<FieldRead> getFieldReads() {
+        return fieldReads;
     }
 
     @Override public String toString() {

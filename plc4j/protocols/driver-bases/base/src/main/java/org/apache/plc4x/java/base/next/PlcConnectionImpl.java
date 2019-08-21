@@ -43,7 +43,8 @@ public class PlcConnectionImpl implements PlcConnection {
         // TODO do we parse here or in the protocol??
         // Prepare the container here
         final int transactionId = transactionCounter.getAndIncrement();
-        final ReadRequest request = new ReadRequest(transactionId, fieldQuery);
+        // final ReadRequest request = new ReadRequest(transactionId, fieldQuery);
+        final ReadRequest request = new ReadRequest(transactionId, null);
         // Create Request Information Object
         final RequestInformation information = new RequestInformation(transactionId);
         information.setRequest(request);

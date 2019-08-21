@@ -57,7 +57,7 @@ public class PlcDriverManagerImplTest {
             }
 
             @Override public void encode(ReadRequest command, ByteBuf out) {
-                out.writeBytes(command.getQuery().getBytes());
+                out.writeBytes("Hallo".getBytes());
             }
 
             @Override public Response decode(ByteBuf buf) throws UnableToParseException {
