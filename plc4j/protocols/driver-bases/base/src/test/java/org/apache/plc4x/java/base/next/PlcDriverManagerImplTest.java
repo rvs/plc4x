@@ -47,6 +47,10 @@ public class PlcDriverManagerImplTest {
             return true;
         }
 
+        @Override public PlcTransportFactory getTransport() {
+            return new TcpTransportFactory();
+        }
+
         private static class TestProtocol implements PlcProtocol {
             @Override public void init() {
 
@@ -61,6 +65,9 @@ public class PlcDriverManagerImplTest {
             }
 
             @Override public Response decode(ByteBuf buf) throws UnableToParseException {
+                if (buf.readByte() == 0x48) {
+                    System.out.println("Ja das ist sehr gut!");
+                }
                 throw new UnableToParseException();
             }
         }
@@ -71,9 +78,6 @@ public class PlcDriverManagerImplTest {
             }
 
             private static class TestParser implements ConnectionParser {
-                @Override public PlcTransportFactory getTransport() {
-                    return new TcpTransportFactory();
-                }
 
                 @Override public SocketAddress getSocketAddress() {
                     return new InetSocketAddress("localhost", 1234);

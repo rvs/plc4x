@@ -24,11 +24,11 @@ public abstract class PlcDriverImpl implements PlcDriver {
         // Prepare the Completable Future
         final CompletableFuture<PlcConnection> returnFuture = new CompletableFuture<>();
         // Establish the connection with callback for Async
-        final PlcTransportFactory transportFactory = parser.getTransport();
+        final PlcTransportFactory transportFactory = getTransport();
         final ChannelFuture channelFuture = transportFactory.connect(getProtocol(), parser.getSocketAddress());
         channelFuture.addListener(new GenericFutureListener<io.netty.util.concurrent.Future<? super Void>>() {
             @Override public void operationComplete(io.netty.util.concurrent.Future<? super Void> f) throws Exception {
-                // If sucesssfull return the new Connection instance, if not, cancel
+                // If successful return the new Connection instance, if not, cancel
                 if (f.isSuccess()) {
                     returnFuture.complete(new PlcConnectionImpl(PlcDriverImpl.this, transportFactory.getCodec(), ((ChannelFuture) f).channel()));
                 } else {

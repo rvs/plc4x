@@ -71,10 +71,10 @@ public class PlcApiCodec extends ByteToMessageCodec<Message> {
         try {
             Response response = protocol.decode(in);
             this.plcConnection.handleResponse(response);
+            ReferenceCountUtil.release(in);
         } catch (PlcProtocol.UnableToParseException e) {
             in.resetReaderIndex();
         }
-        ReferenceCountUtil.release(in);
     }
 
     @Override public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {

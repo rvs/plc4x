@@ -49,7 +49,8 @@ public abstract class PlcTransportFactory {
             bootstrap.group(workerGroup);
             bootstrap.channel(getSocketClass());
             // TODO we should use an explicit (configurable?) timeout here
-            // bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 1000);
+            // Do configuration
+            configure(bootstrap);
 
             // Instanciate codec
             this.codec = new PlcApiCodec(protocol);

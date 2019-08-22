@@ -10,6 +10,9 @@ import java.util.concurrent.Future;
 /**
  * Question: Is this a shared instance (Singleton) or one for each "connection",
  * then we need a factory.
+ *
+ * s7://10.100.110.242&rackId=4
+ * s7-serial://10.100.110.242
  */
 public interface PlcDriver {
 
@@ -19,6 +22,8 @@ public interface PlcDriver {
 
     boolean accepts(String connection);
 
+    PlcTransportFactory getTransport();
+
     interface ConnectionParserFactory {
 
         ConnectionParser parse(String connection) throws PlcConnectionException;
@@ -27,7 +32,7 @@ public interface PlcDriver {
 
     interface ConnectionParser {
 
-        PlcTransportFactory getTransport();
+        // PlcTransportFactory getTransport();
 
         SocketAddress getSocketAddress();
 
