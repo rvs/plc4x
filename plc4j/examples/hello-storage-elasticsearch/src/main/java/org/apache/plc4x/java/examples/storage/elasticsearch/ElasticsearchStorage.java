@@ -162,7 +162,7 @@ public class ElasticsearchStorage {
 
             // Define the event stream.
             // 1) PLC4X source generating a stream of bytes.
-            Supplier<List<Boolean>> plcSupplier = PlcFunctions.booleanListSupplier(plcAdapter, "%Q0:BYTE");
+            Supplier<List<Boolean>> plcSupplier = PlcFunctions.booleanListSupplier(plcAdapter, "%I0:BYTE");
             // 2) Use polling to get an item from the byte-stream in regular intervals.
             TStream<List<Boolean>> plcOutputStates = top.poll(plcSupplier, 100, TimeUnit.MILLISECONDS);
 
