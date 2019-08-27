@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-FROM azul/zulu-openjdk:latest
+FROM azul/zulu-openjdk:latest as build
 
 RUN apt update -y
 RUN apt install -y python-setuptools git 
@@ -30,5 +30,11 @@ RUN ./mvnw -P with-java,with-cpp,with-boost,with-dotnet,with-python,with-proxies
 RUN apt install -y python
 
 RUN ./mvnw -P with-java,with-cpp,with-boost,with-python,with-proxies,with-sandbox install
-# the following fails just the same
-# RUN ./mvnw install -P with-java  -DskipTests
+
+RUN ./mvnw -P build-executable-jars,with-java -DskipTests install
+
+# Now create an actuall deployment container
+FROM azul/zulu-openjdk:latest
+COPY --from=build /ws/plc4j/examples/hello-storage-elasticsearch/target/plc4j-hello-storage-elasticsearch-0.5.0-SNAPSHOT-jar-with-dependencies.jar /plc4xdemo.jar
+
+ENTRYPOINT ["java", "-jar", "/plc4xdemo.jar"]
